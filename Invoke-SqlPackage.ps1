@@ -82,11 +82,10 @@ function Invoke-SqlPackage
 
   begin {               
     $stopwatch = [Diagnostics.StopWatch]::StartNew()
-    $ErrorActionPreference = 'Stop'
     
-    if (!(Test-Path -Path $Executable -PathType Leaf)) 
+    if (!(Test-Path -Path $Executable -PathType Leaf -ErrorAction Stop)) 
     {
-      Write-PSFMessage -Level Error -Message 'Cannot find executable for sqlpackage.exe'
+      Write-PSFMessage -Level Critical -Message 'Cannot find executable for sqlpackage.exe' -Exception $Executable
       return
     }
     
@@ -118,6 +117,11 @@ function Invoke-SqlPackage
     }
     else 
     {
+    if (!(Test-Path -Path $FilePath -PathType Leaf -ErrorAction Stop)) 
+    {
+      Write-PSFMessage -Level Critical -Message 'Cannot find file for import' -Exception $FilePath
+      return
+    }
       $null = $Params.Add('/Action:import')
       $null = $Params.Add("/TargetServerName:$DatabaseServer")
       $null = $Params.Add("/TargetDatabaseName:$DatabaseName")
