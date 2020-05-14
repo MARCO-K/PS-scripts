@@ -3,19 +3,19 @@ function Invoke-SqlPackage
 {    
   <#
       .SYNOPSIS
-      Invoke the sqlpackage executable
+      Invoke the sqlpackage executable.
  
       .DESCRIPTION
-      Invoke the sqlpackage executable and pass the necessary parameters to it
+      Invoke the sqlpackage executable and pass the necessary parameters to it.
 
-      .PARAMETER $Executable
+      .PARAMETER Executable
       Path to executable SqlPackage.exe
 
       .PARAMETER Action
-      Can either be import or export
+      Can either be import/export or extract/publsih.
  
       .PARAMETER DatabaseServer
-      The name of the database server
+      The name of the database server.
  
       If on-premises or classic SQL Server, use either short name og Fully Qualified Domain Name (FQDN).
       If Azure use the full address to the database server, e.g. server.database.windows.net
@@ -24,7 +24,7 @@ function Invoke-SqlPackage
       The name of the database
  
       .PARAMETER SqlUser
-      The login name for the SQL Server instance
+      The login name for the SQL Server instance.
  
       .PARAMETER SqlPwd
       The password for the SQL Server user.
@@ -38,6 +38,9 @@ function Invoke-SqlPackage
       .PARAMETER DiagnosticsFile
       Path to the diagnostics file.
  
+      .PARAMETER OverwriteFiles
+      Specifies if it should overwrite existing files.
+
       .PARAMETER FilePath
       Path to the file, used for either import or export.
 
