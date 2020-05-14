@@ -12,7 +12,7 @@ function Invoke-SqlPackage
       Path to executable SqlPackage.exe
 
       .PARAMETER Action
-      Can either be import/export or extract/publsih.
+      Can either be import/export or extract/publich.
  
       .PARAMETER DatabaseServer
       The name of the database server.
