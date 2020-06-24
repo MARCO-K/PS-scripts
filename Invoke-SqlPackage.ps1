@@ -12,12 +12,12 @@ function Invoke-SqlPackage
       Path to executable SqlPackage.exe
 
       .PARAMETER Action
-      Can either be import/export or extract/publich.
+      Can either be import/export or extract/publsih.
  
       .PARAMETER DatabaseServer
       The name of the database server.
  
-      If on-premises or classic SQL Server, use either short name og Fully Qualified Domain Name (FQDN).
+      If on-premises or classic SQL Server, use either short name or Fully Qualified Domain Name (FQDN).
       If Azure use the full address to the database server, e.g. server.database.windows.net
  
       .PARAMETER DatabaseName
