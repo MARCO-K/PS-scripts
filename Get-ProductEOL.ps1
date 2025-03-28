@@ -41,17 +41,19 @@ function Get-ProductEOL
         function Convert-ApiDate
         {
             param([string]$DateString)
-            $format = "yyyy-MM-dd"
-            $parsedDate = [DateTime]::MinValue
-            [System.Globalization.CultureInfo]$provider = [System.Globalization.CultureInfo]::InvariantCulture
-            $style = [System.Globalization.DateTimeStyles]::None
-            if ([datetime]::TryParseExact($DateString, $format, $provider, $style, [ref]$parsedDate))
+            $parsedDate = [Datetime]::MinValue
+            if ([datetime]::TryParseExact(
+                    $DateString, 
+                    'yyyy-MM-dd', 
+                    [System.Globalization.CultureInfo]::InvariantCulture,
+                    [System.Globalization.DateTimeStyles]::None, 
+                    [ref]$parsedDate
+                ))
             {
-                return $parsedDate
+                $parsedDate
             }
             else
             {
-                Write-Warning "Failed to parse date: $DateString"
                 $DateString
             }
         }
@@ -62,14 +64,14 @@ function Get-ProductEOL
             
             try
             {
-                Write-Verbose "Fetching data for $ProductName"
                 $uri = "$baseUri/$([System.Web.HttpUtility]::UrlEncode($ProductName)).json"
-                Write-Verbose "Requesting URI: $uri"
                 $response = Invoke-RestMethod -Uri $uri -Method Get -ErrorAction Stop
 
+                # Validate response structure
                 if (-not $response -or $response -isnot [array])
                 {
                     Write-Warning "Unexpected response format for $ProductName"
+                    return
                 }
 
                 foreach ($item in $response)
@@ -82,20 +84,18 @@ function Get-ProductEOL
                         EOL             = Convert-ApiDate -DateString $item.eol
                         Latest          = $item.latest
                         LTS             = $item.lts
-                        Support         = $item.support
-                        ExtendedSupport = $item.extendedSupport
+                        Support         = Convert-ApiDate -DateString $item.support
+                        ExtendedSupport = if ($item.extendedSupport -eq $false) { $null } else { Convert-ApiDate -DateString $item.extendedSupport } 
                         Link            = $item.link
                     }
                 }
             }
             catch
             {
-                # Fixed error parameters
                 $errorParams = @{
-                    Exception    = $_.Exception
-                    TargetObject = $ProductName
-                    Message      = "Failed to retrieve data for $ProductName"
-                    ErrorAction  = 'Continue'
+                    Exception   = $_.Exception
+                    Message     = 'Failed to retrieve product list'
+                    ErrorAction = 'Stop'
                 }
                 Write-Error @errorParams
             }
@@ -116,7 +116,7 @@ function Get-ProductEOL
             }
 
             $productList | ForEach-Object {
-                if (Get-ProductData -ProductName $_)
+                if ($data = Get-ProductData -ProductName $_)
                 {
                     $data
                 }
@@ -124,18 +124,13 @@ function Get-ProductEOL
         }
         catch
         {
-            # Proper error handling for main process
-            $errorParams = @{
-                Exception   = $_.Exception
-                Message     = 'Failed to retrieve product list'
-                ErrorAction = 'Stop'
-            }
-            Write-Error @errorParams
+            $message = 'Failed to retrieve product list: {0}' -f $_.Exception.Message
+            Write-Error $message -ErrorAction Stop
         }
     }
 
     end
     {
-        # Output handled through pipeline
+        # Output is handled automatically through pipeline
     }
 }
