@@ -36,7 +36,7 @@ function Get-PaginatedResults
         }
         catch
         {
-            Write-Error "API request failed: $_"
+            Write-Error "API request failed for URI '$Uri': $_"
             return $null
         }
     } while ($Uri)
