@@ -84,12 +84,12 @@ $msgList = $messages | ForEach-Object {
     $msgObject
 }
 
-# Display the MajorChang messages in a grid view
+# Display the MajorChange messages in a grid view
 $msgList | Where-Object { $_.isMajorChange } | Out-GridView -Title "Major Changes"
 
 ## Service Issues
+## identical to all healthOverviews  details with issues
 $issues = Get-PaginatedResults -Uri "/$apiVersion/admin/serviceAnnouncement/issues"
- 
 
 # Create a custom object for each issue
 $serviceIssues = $issues | ForEach-Object {
@@ -114,3 +114,42 @@ $serviceIssues = $issues | ForEach-Object {
 
 # Display open issues messages in a grid view
 $serviceIssues | Where-Object { $_.IsResolved -eq $false } | Out-GridView -Title "Active Issues"
+
+## Get serviceUpdateMessage details
+$changes = $msgList | Where-Object { $_.category -eq 'planForChange' -and $_.isMajorChange -and $_.tags -like '*Retirement*' } | Select-Object id, title, services, actionRequiredByDateTime, category, tags | Out-GridView -Title "Important Service Updates" -PassThru
+
+if ($changes)
+{
+    $details = 
+    foreach ($change in $changes)
+    {
+        $Uri = "/$apiVersion/admin/serviceAnnouncement/messages/$($change.id)"
+        $changedetail = Invoke-MgGraphRequest -Method GET -Uri $Uri
+        $changedetail | ForEach-Object { 
+            $change = $_
+            [PSCustomObject]@{
+                Id                       = $change.id 
+                title                    = $change.title
+                services                 = $change.services -join ', '
+                startDateTime            = $change.startDateTime
+                endDateTime              = $change.endDateTime
+                actionRequiredByDateTime = $change.actionRequiredByDateTime
+                lastModifiedDateTime     = $change.lastModifiedDateTime
+                Details                  = if ($change.details -is [array] -and $change.details) { ($change.details | ForEach-Object { "$($_.name): $($_.value)" }) -join " | " } else { $null }
+                body                     = if ($change.body.content -is [string])
+                { 
+                    $change.body.content -replace '(?i)<p[^>]*>', "`n`n" `
+                        -replace '(?i)</p>', '' `
+                        -replace '(?i)<br\s*/?>', "`n" `
+                        -replace '<[^>]+>', '' `
+                        -replace '[ \t]+', ' ' `
+                        -replace '(?m)^ +| +$', '' `
+                        -replace '\n\s*\n', "`n`n" `
+                        -replace '\s+$', ''
+                } 
+                else { $null }
+            }
+        }
+    }
+    $details
+}
