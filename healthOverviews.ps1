@@ -1,11 +1,54 @@
+#Requires -Module Microsoft.Graph.Authorization
+<#
+.SYNOPSIS
+Retrieves Microsoft 365 service health information
+#>
+
+# --------------------------------------------------
+# Initialization
+# --------------------------------------------------
+
 $scopes = 'ServiceHealth.Read.All'
-Connect-MgGraph -Scopes $scopes
+$apiVersion = "beta"  # Consider "v1.0" when available
+
+
+try
+{
+    Connect-MgGraph -Scopes $scopes
+}
+catch
+{
+    Write-Error "Failed to connect to Microsoft Graph: $_"
+}
+
+# --------------------------------------------------
+# Functions
+# --------------------------------------------------
+function Get-PaginatedResults
+{
+    param($Uri)
+    $results = @()
+    do
+    {
+        try
+        {
+            $response = Invoke-MgGraphRequest -Method GET -Uri $Uri
+            $results += $response.value
+            $Uri = $response.'@odata.nextLink'
+        }
+        catch
+        {
+            Write-Error "API request failed for URI '$Uri': $_"
+            return $null
+        }
+    } while ($Uri)
+    $results
+}
 
 ## List healthOverviews
-$uri = "/beta/admin/serviceAnnouncement/healthOverviews"
-$messages = Invoke-MgGraphRequest -Method GET -Uri $uri
+$serviceAnnouncements = Get-PaginatedResults -Uri "/$apiVersion/admin/serviceAnnouncement/healthOverviews"
 
-$healthStatus = $messages.value | ForEach-Object {
+$healthStatus = $serviceAnnouncements | ForEach-Object {
     [PSCustomObject]@{
         Id      = $_.id
         Service = $_.service
@@ -14,7 +57,7 @@ $healthStatus = $messages.value | ForEach-Object {
 }
 
 # Display results
-$healthStatus
+$healthStatus | Out-GridView -Title "Service Health Overview"
 
 # collect all healthOverviews  details with issues
 $healthcheck = $healthStatus | Where-Object { $_.Status -ne 'serviceOperational' }
@@ -22,9 +65,8 @@ $healthcheck = $healthStatus | Where-Object { $_.Status -ne 'serviceOperational'
 $serviceIssues = foreach ($service in $healthcheck)
 {
     $filter = "?`$expand=issues"
-    $uri = "/beta/admin/serviceAnnouncement/healthOverviews/$($service.Service)$filter"
-    $details = Invoke-MgGraphRequest -Method GET -Uri $uri
-    $details.issues | ForEach-Object {
+    $issues = (Invoke-MgGraphRequest -Method GET -Uri "/$apiVersion/admin/serviceAnnouncement/healthOverviews/$($service.Service)$filter").issues
+    $issues | ForEach-Object {
         $issue = $_    
         [PSCustomObject]@{
             ServiceId            = $service.id
@@ -43,17 +85,10 @@ $serviceIssues = foreach ($service in $healthcheck)
             feature              = $issue.feature
             featureGroup         = $issue.featureGroup
             IssueServices        = $issue.service
-            details              = if ($issue.details -is [array])
-            {
-                $issue.details -join ', '
-            }
-            else
-            {
-                $issue.details
-            }
+            Details              = if ($issue.details -is [array] -and $issue.details) { ($issue.details | ForEach-Object { "$($_.name): $($_.value)" }) -join " | " } else { $null }
         }
     }
 }
 
 # open issues in a grid view
-$serviceIssues | Where-Object { $_.isResolved -eq $false } | ogv
+$serviceIssues | Where-Object { -not $_.IsResolved } | Out-GridView -Title "Active Service Issues"
