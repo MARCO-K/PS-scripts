@@ -92,3 +92,21 @@ $serviceIssues = foreach ($service in $healthcheck)
 
 # open issues in a grid view
 $serviceIssues | Where-Object { -not $_.IsResolved } | Out-GridView -Title "Active Service Issues"
+
+
+## PostIncidentReviewPublished
+# Collect incidents with reports and dl them
+$incidents = $serviceIssues | Where-Object { $_.IssueStatus -eq 'PostIncidentReviewPublished' } | Out-GridView -Title "Resolved Service Issues with report" -PassThru
+
+$OutPath = 'C:\Temp\' # Change this to your desired output path
+
+if ($incidents)
+{
+    foreach ($incident in $incidents)
+    {
+        $docxFile = Join-Path -Path $OutPath -ChildPath "IncidentReport_$($incident.IssueId).docx"
+        $uri = "/$apiVersion/admin/serviceAnnouncement/issues/$($incident.IssueId)/incidentReport"
+        Invoke-MgGraphRequest -Method GET -Uri $uri -OutputFilePath $docxFile -ErrorAction SilentlyContinue
+    }
+
+}
